@@ -12,6 +12,7 @@ func TestNewWithVoidFunc(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.NotNil(t, call)
+	assert.Equal(t, 0, call.NumberOfReturnValues())
 }
 
 func TestNewWithNotAFunc(t *testing.T) {
@@ -26,6 +27,7 @@ func TestNewWithLittleComplexFunction(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.NotNil(t, call)
+	assert.Equal(t, 2, call.NumberOfReturnValues())
 }
 
 func TestCallWithIncorrectArgumentsReturnsAnError(t *testing.T) {

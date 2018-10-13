@@ -4,21 +4,18 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
-func TestThatCorrectConfigDoesNotReturnAnError(t *testing.T) {
-	config := Config{
-		Min: 1,
-		Max: 2,
-	}
-
-	assert.Nil(t, isValid(config))
-}
-
-func TestIncorrectConfigsReturnAnError(t *testing.T) {
+func TestCorrectAndIncorrectConfigs(t *testing.T) {
 	for _, config := range incorrectConfigs() {
 		t.Run("incorrect_config_test", func(t *testing.T) {
 			assert.Error(t, isValid(config), fmt.Sprintf("%+v", config))
+		})
+	}
+	for _, config := range correctConfigs() {
+		t.Run("correct_config_test", func(t *testing.T) {
+			assert.NoError(t, isValid(config), fmt.Sprintf("%+v", config))
 		})
 	}
 }
@@ -52,6 +49,32 @@ func incorrectConfigs() []Config {
 		{
 			Max: -1,
 			Min: 1,
+		},
+		{
+			Max: 1,
+			Min: 1,
+		},
+		{
+			Max:          10,
+			Min:          1,
+			Refresh:      time.Nanosecond,
+			UseMyRefresh: false,
+		},
+	}
+}
+
+func correctConfigs() []Config {
+	return []Config{
+		{
+			Max:     2,
+			Min:     1,
+			Refresh: time.Second,
+		},
+		{
+			Max:          2,
+			Min:          1,
+			Refresh:      time.Nanosecond,
+			UseMyRefresh: true,
 		},
 	}
 }
