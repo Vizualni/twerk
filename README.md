@@ -2,7 +2,7 @@
 # Twerk, twerk, twerk!
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/Vizualni/twerk)](https://goreportcard.com/report/github.com/Vizualni/twerk)
-
+[![CircleCI](https://circleci.com/gh/Vizualni/twerk/tree/master.svg?style=shield)](https://circleci.com/gh/Vizualni/twerk/tree/master)
 
 ### Why did I give it name Twerk?
 
