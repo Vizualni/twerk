@@ -6,4 +6,5 @@
 
 ### Why did I give it name Twerk?
 
-When you say words twerk, twerk, twerk really fast it sounds like work, work, work... :)
+When you say words twerk, twerk, twerk really fast it sounds like work, work, work...
+And this is, after all, a twerker pool...I mean, a worker pool ;)
