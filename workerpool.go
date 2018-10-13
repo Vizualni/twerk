@@ -4,6 +4,8 @@ package twerk
 
 import (
 	"github.com/vizualni/twerk/callable"
+	"github.com/vizualni/twerk/math"
+	"log"
 	"reflect"
 	"time"
 )
@@ -64,15 +66,15 @@ func New(v interface{}, config Config) (*twerk, error) {
 
 func (twrkr *twerk) startInBackground() {
 
-	for i := 0; i < twrkr.config.Min; i++ {
-		twrkr.startWorker()
-	}
+	twrkr.doINeedToStartMissingOnes()
 
 	tick := time.NewTicker(twrkr.config.Refresh)
 
 	go func() {
 		defer tick.Stop()
 		for range tick.C {
+
+			twrkr.printStatus()
 
 			if twrkr.doINeedToStartMissingOnes() {
 				continue
@@ -88,6 +90,16 @@ func (twrkr *twerk) startInBackground() {
 
 		}
 	}()
+}
+
+func (twrkr *twerk) printStatus() {
+	live := twrkr.liveWorkersNum.Get()
+	working := twrkr.currentlyWorkingNum.Get()
+	inQueue := len(twrkr.jobListener)
+	idle := live - working
+
+	log.Printf("Live: %d; Working: %d; Idle: %d, Jobs in queue: %d; Min: %d; Max: %d",
+		live, working, idle, inQueue, twrkr.config.Min, twrkr.config.Max)
 }
 
 func (twrkr *twerk) doINeedToStartMissingOnes() bool {
@@ -113,17 +125,7 @@ func (twrkr *twerk) doWeHaveTooLittleWorkers() bool {
 		return false
 	}
 
-	remainingInQeueu := inQueue - live
-
-	if remainingInQeueu == 0 {
-		return false
-	}
-
-	howMuchToStart := remainingInQeueu
-
-	if howMuchToStart > twrkr.config.Max {
-		howMuchToStart = twrkr.config.Max
-	}
+	howMuchToStart := math.Min(twrkr.config.Max-live, inQueue)
 
 	twrkr.startWorkers(howMuchToStart)
 
@@ -133,15 +135,15 @@ func (twrkr *twerk) doWeHaveTooLittleWorkers() bool {
 func (twrkr *twerk) doWeNeedToKillSomeWorkers() bool {
 	live := twrkr.liveWorkersNum.Get()
 	working := twrkr.currentlyWorkingNum.Get()
-	inQueue := len(twrkr.jobListener)
 
 	idle := live - working
+	min := twrkr.config.Min
 
-	if idle < inQueue {
+	if idle <= min {
 		return false
 	}
 
-	twrkr.stopWorkers(inQueue - idle)
+	twrkr.stopWorkers(idle - min)
 
 	return true
 }
@@ -150,6 +152,7 @@ func (twrkr *twerk) startWorkers(n int) {
 	if n <= 0 {
 		return
 	}
+	log.Printf("Starting %d workers\n", n)
 	for i := 0; i < n; i++ {
 		twrkr.startWorker()
 	}
@@ -159,6 +162,7 @@ func (twrkr *twerk) stopWorkers(n int) {
 	if n <= 0 {
 		return
 	}
+	log.Printf("Stopping %d workers\n", n)
 	for i := 0; i < n; i++ {
 		twrkr.stopWorker()
 	}
