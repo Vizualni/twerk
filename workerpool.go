@@ -19,7 +19,8 @@ type twerk struct {
 
 	jobListener chan jobInstruction
 
-	liveWorkersNum *atomicNumber
+	liveWorkersNum      *atomicNumber
+	currentlyWorkingNum *atomicNumber
 
 	broadcastDie chan bool
 }
@@ -48,9 +49,10 @@ func New(v interface{}, config Config) (*twerk, error) {
 
 		config: config,
 
-		jobListener: make(chan jobInstruction, 15),
+		jobListener: make(chan jobInstruction, config.Max),
 
-		liveWorkersNum: newAtomicNumber(0),
+		liveWorkersNum:      newAtomicNumber(0),
+		currentlyWorkingNum: newAtomicNumber(0),
 
 		broadcastDie: make(chan bool),
 	}
@@ -66,44 +68,100 @@ func (twrkr *twerk) startInBackground() {
 		twrkr.startWorker()
 	}
 
-	tick := time.NewTicker(1000 * time.Millisecond)
+	tick := time.NewTicker(twrkr.config.Refresh)
 
 	go func() {
 		defer tick.Stop()
 		for range tick.C {
 
-			inQueue := len(twrkr.jobListener)
-			live := twrkr.liveWorkersNum.Get()
-			min := twrkr.config.Min
-
-			// some of the workers died?
-			// better startInBackground them again
-			if live < min {
-				for i := live; i < twrkr.config.Min; i++ {
-					twrkr.startWorker()
-				}
+			if twrkr.doINeedToStartMissingOnes() {
 				continue
 			}
 
-			// we are far behind and need to startInBackground new workers
-			if inQueue >= live {
-				howMuchWorkersToStart := inQueue - live
-				for i := 0; i < howMuchWorkersToStart; i++ {
-					twrkr.startWorker()
-				}
+			if twrkr.doWeHaveTooLittleWorkers() {
 				continue
 			}
 
-			killThisMany := live - inQueue - min
-
-			if killThisMany > 0 {
-				for i := 0; i < killThisMany; i++ {
-					twrkr.killWorker()
-				}
+			if twrkr.doWeNeedToKillSomeWorkers() {
+				continue
 			}
 
 		}
 	}()
+}
+
+func (twrkr *twerk) doINeedToStartMissingOnes() bool {
+	live := twrkr.liveWorkersNum.Get()
+	min := twrkr.config.Min
+
+	if live < min {
+		twrkr.startWorkers(min - live)
+		return true
+	}
+
+	return false
+}
+
+func (twrkr *twerk) doWeHaveTooLittleWorkers() bool {
+	live := twrkr.liveWorkersNum.Get()
+	working := twrkr.currentlyWorkingNum.Get()
+	inQueue := len(twrkr.jobListener)
+
+	idle := live - working
+
+	if idle >= inQueue {
+		return false
+	}
+
+	remainingInQeueu := inQueue - live
+
+	if remainingInQeueu == 0 {
+		return false
+	}
+
+	howMuchToStart := remainingInQeueu
+
+	if howMuchToStart > twrkr.config.Max {
+		howMuchToStart = twrkr.config.Max
+	}
+
+	twrkr.startWorkers(howMuchToStart)
+
+	return true
+}
+
+func (twrkr *twerk) doWeNeedToKillSomeWorkers() bool {
+	live := twrkr.liveWorkersNum.Get()
+	working := twrkr.currentlyWorkingNum.Get()
+	inQueue := len(twrkr.jobListener)
+
+	idle := live - working
+
+	if idle < inQueue {
+		return false
+	}
+
+	twrkr.stopWorkers(inQueue - idle)
+
+	return true
+}
+
+func (twrkr *twerk) startWorkers(n int) {
+	if n <= 0 {
+		return
+	}
+	for i := 0; i < n; i++ {
+		twrkr.startWorker()
+	}
+}
+
+func (twrkr *twerk) stopWorkers(n int) {
+	if n <= 0 {
+		return
+	}
+	for i := 0; i < n; i++ {
+		twrkr.stopWorker()
+	}
 }
 
 func (twrkr *twerk) startWorker() {
@@ -115,20 +173,15 @@ func (twrkr *twerk) startWorker() {
 		for {
 			select {
 			case job := <-twrkr.jobListener:
-
+				twrkr.currentlyWorkingNum.Incr()
 				returnValues := twrkr.callable.CallFunction(job.arguments)
-
 				if len(returnValues) > 0 {
 					go func() {
-						// check if channel is closed
-						_, closed := <-job.returnTo
-
-						if !closed {
-							job.returnTo <- returnValues
-							close(job.returnTo)
-						}
+						job.returnTo <- returnValues
+						close(job.returnTo)
 					}()
 				}
+				twrkr.currentlyWorkingNum.Decr()
 			case <-twrkr.broadcastDie:
 				// somebody requested that we die
 				return
@@ -138,8 +191,13 @@ func (twrkr *twerk) startWorker() {
 
 }
 
-func (twrkr *twerk) killWorker() {
-	twrkr.broadcastDie <- true
+func (twrkr *twerk) stopWorker() {
+	select {
+	case twrkr.broadcastDie <- true:
+		// nice
+	case <-time.After(time.Millisecond):
+		// nobody is listening
+	}
 }
 
 func (twrkr *twerk) Work(args ...interface{}) (<-chan []interface{}, error) {
