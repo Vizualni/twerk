@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Configuration settings for the Twerker
+// Config settings for the Twerker
 type Config struct {
 
 	// Defines a maximum number of workers which are allowed to work at the same time
@@ -20,7 +20,7 @@ type Config struct {
 	UseMyRefresh bool
 }
 
-// Default config that you can use instead of creating your own.
+// DefaultConfig is configuration that you can use instead of creating your own.
 // Maximum is defined as number of CPU cores you have.
 var DefaultConfig = Config{
 	Max: runtime.NumCPU(),

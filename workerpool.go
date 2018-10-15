@@ -42,7 +42,7 @@ type jobInstruction struct {
 	returnTo  chan []interface{}
 }
 
-// Constructor for the Twerker.
+// New is the constructor for the Twerker.
 func New(v interface{}, config Config) (*twerk, error) {
 
 	callableFunc, err := callable.New(v)
