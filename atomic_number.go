@@ -14,6 +14,7 @@ func newAtomicNumber(num int) *atomicNumber {
 	}
 }
 
+// Atomic increase
 func (an *atomicNumber) Incr() int {
 	an.Lock()
 	an.num++
@@ -22,6 +23,7 @@ func (an *atomicNumber) Incr() int {
 	return newValue
 }
 
+// Atomic decrease
 func (an *atomicNumber) Decr() int {
 	an.Lock()
 	an.num--
@@ -30,6 +32,7 @@ func (an *atomicNumber) Decr() int {
 	return newValue
 }
 
+// Gets number
 func (an *atomicNumber) Get() int {
 	an.Lock()
 	value := an.num

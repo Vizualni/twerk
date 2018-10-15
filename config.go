@@ -6,14 +6,22 @@ import (
 	"time"
 )
 
+// Configuration settings for the Twerker
 type Config struct {
+
+	// Defines a maximum number of workers which are allowed to work at the same time
 	Max int
+	// Defines a minimum number of workers which are supposed to stay alive (or idle)
 	Min int
 
-	Refresh      time.Duration
+	// After each Refresh duration, it will check if it needs to scale up or down
+	Refresh time.Duration
+	// Set it to true only if you want to have really low value for the Refresh interval
 	UseMyRefresh bool
 }
 
+// Default config that you can use instead of creating your own.
+// Maximum is defined as number of CPU cores you have.
 var DefaultConfig = Config{
 	Max: runtime.NumCPU(),
 	Min: 0,
