@@ -11,7 +11,16 @@ import (
 )
 
 type Twerker interface {
+
+	// Calls the actual function with the given arguments.
 	Work(args ...interface{}) (<-chan []interface{}, error)
+
+	// Waits until there are no more jobs in the queue, then it releases.
+	Wait()
+
+	// Stops accepting new jobs and finishes everything.
+	// Work cannot be called after Stop has already been called.
+	// Stop()
 }
 
 type twerk struct {
@@ -223,8 +232,20 @@ func (twrkr *twerk) Work(args ...interface{}) (<-chan []interface{}, error) {
 		returnTo:  returnToChan,
 	}
 
-	// blocks until it can write to a channel
-	twrkr.jobListener <- newJobPass
+	go func() {
+		twrkr.jobListener <- newJobPass
+	}()
 
 	return returnToChan, nil
+}
+
+func (twrkr *twerk) Wait() {
+	ticker := time.NewTicker(100 * time.Microsecond)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		if len(twrkr.jobListener) == 0 && twrkr.liveWorkersNum.Get() == twrkr.config.Min && twrkr.currentlyWorkingNum.Get() == 0 {
+			return
+		}
+	}
 }

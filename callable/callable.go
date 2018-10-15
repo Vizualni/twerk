@@ -56,6 +56,14 @@ func (c *Callable) TransformToValues(arguments ...interface{}) ([]reflect.Value,
 
 	// check if arguments match
 	for i := range c.argumentTypes {
+
+		// todo ovo jos provjeri
+		if c.argumentTypes[i].Kind() == reflect.Interface {
+			if !argumentValues[i].Type().Implements(c.argumentTypes[i]) {
+				return nil, fmt.Errorf("%s argument does not implement %s", argumentValues[i].String(), c.argumentTypes[i].String())
+			}
+			continue
+		}
 		if c.argumentTypes[i].Kind() != argumentValues[i].Kind() {
 			return nil, fmt.Errorf(
 				"argument with index %d of type %s does not match with expected type %s",
