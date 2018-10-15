@@ -5,6 +5,8 @@ import (
 	"reflect"
 )
 
+// Callable is just wrapper around the function.
+// It takes function, extract its argument types and validates that dynamic calls actually work.
 type Callable struct {
 	callable reflect.Value
 
@@ -13,6 +15,8 @@ type Callable struct {
 	numberOfReturnValues int
 }
 
+// New is constructor for the Callable.
+// First argument must be a function, otherwise there is an error returned.
 func New(v interface{}) (*Callable, error) {
 
 	reflectValue := reflect.ValueOf(v)
@@ -28,10 +32,15 @@ func New(v interface{}) (*Callable, error) {
 	}, nil
 }
 
+// NumberOfReturnValues return the number of return values.
+// e.g. func() (int, bool, err) {} has 3 return values
 func (c *Callable) NumberOfReturnValues() int {
 	return c.numberOfReturnValues
 }
 
+// CallFunction calls original function with the arguments.
+// Returns slice of interfaces.
+// Its on you to make all the type assertions.
 func (c *Callable) CallFunction(argumentValues []reflect.Value) (resultInterfaces []interface{}) {
 
 	shouldReturn := c.numberOfReturnValues > 0
@@ -46,6 +55,8 @@ func (c *Callable) CallFunction(argumentValues []reflect.Value) (resultInterface
 	return
 }
 
+// TransformToValues takes slice of interfaces and validates them against function arguments.
+// If they do not match, an errors is returned.
 func (c *Callable) TransformToValues(arguments ...interface{}) ([]reflect.Value, error) {
 
 	if len(arguments) != len(c.argumentTypes) {
