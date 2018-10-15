@@ -3,6 +3,7 @@ package twerk
 // rename to twerk...twerk twerk twerk
 
 import (
+	"fmt"
 	"github.com/vizualni/twerk/callable"
 	"github.com/vizualni/twerk/math"
 	"log"
@@ -21,7 +22,7 @@ type Twerker interface {
 
 	// Stops accepting new jobs and finishes everything.
 	// Work cannot be called after Stop has already been called.
-	// Stop()
+	Stop()
 }
 
 type twerk struct {
@@ -35,6 +36,8 @@ type twerk struct {
 	currentlyWorkingNum *atomicNumber
 
 	broadcastDie chan bool
+
+	stop bool
 }
 
 type jobInstruction struct {
@@ -86,6 +89,9 @@ func (twrkr *twerk) startInBackground() {
 	go func() {
 		defer tick.Stop()
 		for range tick.C {
+			if twrkr.stop {
+				return
+			}
 
 			twrkr.printStatus()
 
@@ -202,7 +208,7 @@ func (twrkr *twerk) startWorker() {
 
 		for {
 			select {
-			case job := <-twrkr.jobListener:
+			case job, _ := <-twrkr.jobListener:
 				twrkr.currentlyWorkingNum.Incr()
 				returnValues := twrkr.callable.CallFunction(job.arguments)
 				if len(returnValues) > 0 {
@@ -236,6 +242,10 @@ func (twrkr *twerk) stopWorker() {
 // The actual work function that calls the function with given arguments
 func (twrkr *twerk) Work(args ...interface{}) (<-chan []interface{}, error) {
 
+	if twrkr.stop {
+		return nil, fmt.Errorf("twerker has been stopped. no more work can be done with this twerker")
+	}
+
 	argumentValues, err := twrkr.callable.TransformToValues(args...)
 
 	if err != nil {
@@ -263,6 +273,9 @@ func (twrkr *twerk) Work(args ...interface{}) (<-chan []interface{}, error) {
 // Waits until there are no more jobs in the queue, there are no more working workers and the alive number of workers
 // is the minimum possible.
 func (twrkr *twerk) Wait() {
+	if twrkr.stop {
+		return
+	}
 	ticker := time.NewTicker(100 * time.Microsecond)
 	defer ticker.Stop()
 
@@ -271,4 +284,12 @@ func (twrkr *twerk) Wait() {
 			return
 		}
 	}
+}
+
+// Stops
+func (twrkr *twerk) Stop() {
+	twrkr.stop = true
+	twrkr.Wait()
+	twrkr.stopWorkers(twrkr.liveWorkersNum.Get())
+	close(twrkr.jobListener)
 }

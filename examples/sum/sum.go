@@ -34,6 +34,7 @@ func main() {
 	go exampleWork(pool, 8, 9)
 
 	pool.Wait()
+	pool.Stop()
 }
 
 func exampleWork(pool twerk.Twerker, a, b int) {
