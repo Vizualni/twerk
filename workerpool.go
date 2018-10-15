@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// Twerker (or Worker) interface.
 type Twerker interface {
 
 	// Calls the actual function with the given arguments.
@@ -41,6 +42,7 @@ type jobInstruction struct {
 	returnTo  chan []interface{}
 }
 
+// Constructor for the Twerker.
 func New(v interface{}, config Config) (*twerk, error) {
 
 	callableFunc, err := callable.New(v)
@@ -73,6 +75,8 @@ func New(v interface{}, config Config) (*twerk, error) {
 	return twrkr, nil
 }
 
+// Starts another goroutine in background which monitors all
+// others and has responsibility to scale up or down when necessary
 func (twrkr *twerk) startInBackground() {
 
 	twrkr.doINeedToStartMissingOnes()
@@ -101,6 +105,8 @@ func (twrkr *twerk) startInBackground() {
 	}()
 }
 
+// This is just a debug line.
+// This should be opt-in from the config.
 func (twrkr *twerk) printStatus() {
 	live := twrkr.liveWorkersNum.Get()
 	working := twrkr.currentlyWorkingNum.Get()
@@ -111,6 +117,8 @@ func (twrkr *twerk) printStatus() {
 		live, working, idle, inQueue, twrkr.config.Min, twrkr.config.Max)
 }
 
+// Checks if there are less than minimum number of workers available.
+// If yes, it startes them.
 func (twrkr *twerk) doINeedToStartMissingOnes() bool {
 	live := twrkr.liveWorkersNum.Get()
 	min := twrkr.config.Min
@@ -123,6 +131,8 @@ func (twrkr *twerk) doINeedToStartMissingOnes() bool {
 	return false
 }
 
+// Checks if there are more jobs than workers. Scales workers up to the
+// maximum available number.
 func (twrkr *twerk) doWeHaveTooLittleWorkers() bool {
 	live := twrkr.liveWorkersNum.Get()
 	working := twrkr.currentlyWorkingNum.Get()
@@ -141,6 +151,8 @@ func (twrkr *twerk) doWeHaveTooLittleWorkers() bool {
 	return true
 }
 
+// Are there way too many workers alive who are not doing anything?
+// If yes, kill them!
 func (twrkr *twerk) doWeNeedToKillSomeWorkers() bool {
 	live := twrkr.liveWorkersNum.Get()
 	working := twrkr.currentlyWorkingNum.Get()
@@ -157,6 +169,7 @@ func (twrkr *twerk) doWeNeedToKillSomeWorkers() bool {
 	return true
 }
 
+// Starts n workers.
 func (twrkr *twerk) startWorkers(n int) {
 	if n <= 0 {
 		return
@@ -167,6 +180,7 @@ func (twrkr *twerk) startWorkers(n int) {
 	}
 }
 
+// Stops n workers.
 func (twrkr *twerk) stopWorkers(n int) {
 	if n <= 0 {
 		return
@@ -177,6 +191,9 @@ func (twrkr *twerk) stopWorkers(n int) {
 	}
 }
 
+// Starts a single worker.
+// Also increases number of live workers when started.
+// When job starts processing then it increases number of currently working workers.
 func (twrkr *twerk) startWorker() {
 
 	go func() {
@@ -204,6 +221,9 @@ func (twrkr *twerk) startWorker() {
 
 }
 
+// Stops worker, or if there arent any available,
+// does nothing ofter one millisecond.
+// Not the best approach
 func (twrkr *twerk) stopWorker() {
 	select {
 	case twrkr.broadcastDie <- true:
@@ -213,6 +233,7 @@ func (twrkr *twerk) stopWorker() {
 	}
 }
 
+// The actual work function that calls the function with given arguments
 func (twrkr *twerk) Work(args ...interface{}) (<-chan []interface{}, error) {
 
 	argumentValues, err := twrkr.callable.TransformToValues(args...)
@@ -239,6 +260,8 @@ func (twrkr *twerk) Work(args ...interface{}) (<-chan []interface{}, error) {
 	return returnToChan, nil
 }
 
+// Waits until there are no more jobs in the queue, there are no more working workers and the alive number of workers
+// is the minimum possible.
 func (twrkr *twerk) Wait() {
 	ticker := time.NewTicker(100 * time.Microsecond)
 	defer ticker.Stop()
