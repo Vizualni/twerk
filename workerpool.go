@@ -5,7 +5,6 @@ package twerk
 import (
 	"fmt"
 	"github.com/vizualni/twerk/callable"
-	"github.com/vizualni/twerk/math"
 	"log"
 	"reflect"
 	"time"
@@ -38,6 +37,8 @@ type twerk struct {
 	broadcastDie chan bool
 
 	stop bool
+
+	orchestrator Orchestrator
 }
 
 type jobInstruction struct {
@@ -71,6 +72,8 @@ func New(v interface{}, config Config) (*twerk, error) {
 		currentlyWorkingNum: newAtomicNumber(0),
 
 		broadcastDie: make(chan bool),
+
+		orchestrator: &defaultOrchestrator{config: &config},
 	}
 
 	twrkr.startInBackground()
@@ -82,7 +85,7 @@ func New(v interface{}, config Config) (*twerk, error) {
 // others and has responsibility to scale up or down when necessary
 func (twrkr *twerk) startInBackground() {
 
-	twrkr.doINeedToStartMissingOnes()
+	twrkr.changeCapacity()
 
 	tick := time.NewTicker(twrkr.config.Refresh)
 
@@ -93,19 +96,9 @@ func (twrkr *twerk) startInBackground() {
 				return
 			}
 
-			twrkr.printStatus()
+			//twrkr.printStatus()
 
-			if twrkr.doINeedToStartMissingOnes() {
-				continue
-			}
-
-			if twrkr.doWeHaveTooLittleWorkers() {
-				continue
-			}
-
-			if twrkr.doWeNeedToKillSomeWorkers() {
-				continue
-			}
+			twrkr.changeCapacity()
 
 		}
 	}()
@@ -123,56 +116,18 @@ func (twrkr *twerk) printStatus() {
 		live, working, idle, inQueue, twrkr.config.Min, twrkr.config.Max)
 }
 
-// Checks if there are less than minimum number of workers available.
-// If yes, it startes them.
-func (twrkr *twerk) doINeedToStartMissingOnes() bool {
-	live := twrkr.liveWorkersNum.Get()
-	min := twrkr.config.Min
-
-	if live < min {
-		twrkr.startWorkers(min - live)
-		return true
-	}
-
-	return false
-}
-
-// Checks if there are more jobs than workers. Scales workers up to the
-// maximum available number.
-func (twrkr *twerk) doWeHaveTooLittleWorkers() bool {
+// This is just a debug line.
+// This should be opt-in from the config.
+func (twrkr *twerk) status() Status {
 	live := twrkr.liveWorkersNum.Get()
 	working := twrkr.currentlyWorkingNum.Get()
 	inQueue := len(twrkr.jobListener)
 
-	idle := live - working
-
-	if idle >= inQueue {
-		return false
+	return Status{
+		live:        live,
+		working:     working,
+		jobsInQueue: inQueue,
 	}
-
-	howMuchToStart := math.Min(twrkr.config.Max-live, inQueue)
-
-	twrkr.startWorkers(howMuchToStart)
-
-	return true
-}
-
-// Are there way too many workers alive who are not doing anything?
-// If yes, kill them!
-func (twrkr *twerk) doWeNeedToKillSomeWorkers() bool {
-	live := twrkr.liveWorkersNum.Get()
-	working := twrkr.currentlyWorkingNum.Get()
-
-	idle := live - working
-	min := twrkr.config.Min
-
-	if idle <= min {
-		return false
-	}
-
-	twrkr.stopWorkers(idle - min)
-
-	return true
 }
 
 // Starts n workers.
@@ -258,13 +213,13 @@ func (twrkr *twerk) Work(args ...interface{}) (<-chan []interface{}, error) {
 		returnToChan = make(chan []interface{})
 	}
 
-	newJobPass := jobInstruction{
+	newJobInstruction := jobInstruction{
 		arguments: argumentValues,
 		returnTo:  returnToChan,
 	}
 
 	go func() {
-		twrkr.jobListener <- newJobPass
+		twrkr.jobListener <- newJobInstruction
 	}()
 
 	return returnToChan, nil
@@ -292,4 +247,17 @@ func (twrkr *twerk) Stop() {
 	twrkr.Wait()
 	twrkr.stopWorkers(twrkr.liveWorkersNum.Get())
 	close(twrkr.jobListener)
+}
+
+func (twrkr *twerk) changeCapacity() {
+	// stop the world
+	status := twrkr.status()
+	addRemove, _ := twrkr.orchestrator.Calculate(status)
+
+	switch {
+	case addRemove > 0:
+		twrkr.startWorkers(addRemove)
+	case addRemove < 0:
+		twrkr.stopWorkers(addRemove)
+	}
 }
