@@ -7,6 +7,7 @@ import (
 	"github.com/vizualni/twerk/callable"
 	"log"
 	"reflect"
+	"sync"
 	"time"
 )
 
@@ -39,6 +40,8 @@ type twerk struct {
 	stop bool
 
 	orchestrator Orchestrator
+
+	stopTheWorldLock *sync.RWMutex
 }
 
 type jobInstruction struct {
@@ -74,6 +77,8 @@ func New(v interface{}, config Config) (*twerk, error) {
 		broadcastDie: make(chan bool),
 
 		orchestrator: &defaultOrchestrator{config: &config},
+
+		stopTheWorldLock: &sync.RWMutex{},
 	}
 
 	twrkr.startInBackground()
@@ -95,11 +100,7 @@ func (twrkr *twerk) startInBackground() {
 			if twrkr.stop {
 				return
 			}
-
-			//twrkr.printStatus()
-
 			twrkr.changeCapacity()
-
 		}
 	}()
 }
@@ -158,12 +159,16 @@ func (twrkr *twerk) stopWorkers(n int) {
 func (twrkr *twerk) startWorker() {
 
 	go func() {
+		twrkr.waitOnWorld()
 		twrkr.liveWorkersNum.Incr()
-		defer twrkr.liveWorkersNum.Decr()
-
+		defer func() {
+			twrkr.waitOnWorld()
+			twrkr.liveWorkersNum.Decr()
+		}()
 		for {
 			select {
 			case job, _ := <-twrkr.jobListener:
+				twrkr.waitOnWorld()
 				twrkr.currentlyWorkingNum.Incr()
 				returnValues := twrkr.callable.CallFunction(job.arguments)
 				if len(returnValues) > 0 {
@@ -172,6 +177,7 @@ func (twrkr *twerk) startWorker() {
 						close(job.returnTo)
 					}()
 				}
+				twrkr.waitOnWorld()
 				twrkr.currentlyWorkingNum.Decr()
 			case <-twrkr.broadcastDie:
 				// somebody requested that we die
@@ -251,6 +257,9 @@ func (twrkr *twerk) Stop() {
 
 func (twrkr *twerk) changeCapacity() {
 	// stop the world
+	twrkr.stopTheWorldLock.Lock()
+	defer twrkr.stopTheWorldLock.Unlock()
+
 	status := twrkr.status()
 	addRemove, _ := twrkr.orchestrator.Calculate(status)
 
@@ -260,4 +269,9 @@ func (twrkr *twerk) changeCapacity() {
 	case addRemove < 0:
 		twrkr.stopWorkers(addRemove)
 	}
+}
+
+func (twrkr *twerk) waitOnWorld() {
+	twrkr.stopTheWorldLock.RLock()
+	defer twrkr.stopTheWorldLock.RUnlock()
 }
