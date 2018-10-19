@@ -3,7 +3,6 @@ package twerk
 import (
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"time"
 )
 
 func TestThatNonFunctionReturnsAnError(t *testing.T) {
@@ -72,35 +71,4 @@ func TestThatWorkerActuallyReturnsTheSameNumberOfReturnValues(t *testing.T) {
 	assert.Equal(t, 1, results[0])
 	assert.Equal(t, 2, results[1])
 	assert.Equal(t, 3, results[2])
-}
-
-func TestThatItWillScaleUpIfItCantWork(t *testing.T) {
-	config := Config{}
-	config.Min = 0
-	config.Max = 1
-	config.Refresh = 500 * time.Millisecond
-
-	pool, _ := New(func(exit chan bool) {
-		<-exit
-	}, config)
-
-	e1 := make(chan bool)
-	e2 := make(chan bool)
-
-	pool.Work(e1)
-
-	didItWork := make(chan bool)
-
-	go func(didItWork chan bool) {
-		t1 := time.Now()
-		pool.Work(e2)
-		d := time.Now().Sub(t1)
-		didItWork <- d > 450*time.Millisecond
-	}(didItWork)
-
-	time.Sleep(500 * time.Millisecond)
-	e1 <- true
-	e2 <- true
-
-	assert.True(t, <-didItWork)
 }
