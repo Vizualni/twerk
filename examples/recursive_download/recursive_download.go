@@ -49,9 +49,13 @@ func main() {
 	})
 
 	fmt.Println(count)
+	pool.Stop()
 
 }
 
+// downloads url and extracts all the links it can find
+// then sends then back to the twerker
+// once the depth was hit to zero, it will exit (as this is just an example)
 func (c *crawler) recursiveDownload(pool twerk.Twerker, url string, depth int) {
 	if depth <= 0 {
 		return
@@ -60,11 +64,13 @@ func (c *crawler) recursiveDownload(pool twerk.Twerker, url string, depth int) {
 		return
 	}
 	c.visited.Store(url, true)
+
 	fmt.Println(url)
 	res, err := http.Get(url)
 	if err != nil {
 		return
 	}
+
 	b, _ := ioutil.ReadAll(res.Body)
 	defer res.Body.Close()
 
