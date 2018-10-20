@@ -25,17 +25,8 @@ func (orch *defaultOrchestrator) Calculate(status Status) (startStopNum int, err
 func (orch *defaultOrchestrator) doINeedToStartMissingOnes(status Status) int {
 	toStart := 0
 	live := status.Live()
-	min := orch.config.Min
 	max := orch.config.Max
 	inQueue := math.Min(status.JobsInQueue(), max)
-	idle := status.Idle()
-
-	if live < min {
-		toStart += min - live
-		live += toStart
-		idle += toStart
-		// working also
-	}
 
 	if inQueue >= live {
 		toStart += inQueue - live
@@ -49,7 +40,6 @@ func (orch *defaultOrchestrator) doINeedToStartMissingOnes(status Status) int {
 func (orch *defaultOrchestrator) doWeNeedToKillSomeWorkers(status Status) int {
 	idle := status.Idle()
 	inQueue := status.JobsInQueue()
-	min := orch.config.Min
 
 	if idle <= inQueue {
 		return 0
@@ -57,10 +47,5 @@ func (orch *defaultOrchestrator) doWeNeedToKillSomeWorkers(status Status) int {
 
 	toKill := idle - inQueue
 
-	newLive := status.Live() - toKill
-
-	if newLive < min {
-		return 0
-	}
 	return toKill
 }

@@ -35,7 +35,6 @@ package main
 import (
 	"fmt"
 	"github.com/vizualni/twerk"
-	"sync"
 	"time"
 )
 
@@ -44,79 +43,67 @@ func main() {
 	config := twerk.Config{
 		Refresh: 800 * time.Millisecond,
 		Max:     3,
-		Min:     1,
 	}
 
-	pool, err := twerk.New(sum, config)
+	pool, err := twerk.New(func(a, b int) int {
+		time.Sleep(1 * time.Second)
+		return a + b
+	}, config)
 
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	wg := &sync.WaitGroup{}
-	wg.Add(7)
-	go exampleWork(pool, wg, 1, 2)
-	go exampleWork(pool, wg, 2, 9)
+	go sumWrapper(pool, 1, 2)
+	go sumWrapper(pool, 2, 9)
 	time.Sleep(3 * time.Second)
-	go exampleWork(pool, wg, 22, 1)
-	go exampleWork(pool, wg, 0, 4)
-	go exampleWork(pool, wg, 5, 5)
-	go exampleWork(pool, wg, 5, 5)
-	go exampleWork(pool, wg, 5, 5)
+	go sumWrapper(pool, 22, 1)
+	go sumWrapper(pool, 0, 4)
+	go sumWrapper(pool, 1, 5)
+	go sumWrapper(pool, 6, 7)
+	go sumWrapper(pool, 8, 9)
 
-	wg.Wait()
-	time.Sleep(1 * time.Second)
+	pool.Wait()
+	fmt.Println("all done")
+	pool.Stop()
+	fmt.Println("workers stopped")
 }
 
-func sum(a, b int) int {
-	time.Sleep(1 * time.Second)
-
-	return a + b
-}
-
-func exampleWork(pool twerk.Twerker, wg *sync.WaitGroup, a, b int) {
-	resChan, err := pool.Work(a, b)
-
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+func sumWrapper(pool twerk.Twerker, a, b int) {
+	resChan, _ := pool.Work(a, b)
 	// we know it's an int
 	result, _ := (<-resChan)[0].(int)
 	fmt.Printf("%d + %d = %d\n", a, b, result)
-	wg.Done()
 }
+
 
 ```
 
 outputs:
 
 ```
-2018/10/13 19:32:03 Starting 1 workers
-2018/10/13 19:32:03 Live: 1; Working: 1; Idle: 0, Jobs in queue: 1; Min: 1; Max: 3
-2018/10/13 19:32:03 Starting 1 workers
-2 + 9 = 11
-2018/10/13 19:32:04 Live: 2; Working: 1; Idle: 1, Jobs in queue: 0; Min: 1; Max: 3
+2018/10/20 13:13:48 Live: 0; Working: 0; Idle: 0, Jobs in queue: 2; Max: 3
+2018/10/20 13:13:48 Starting 2 workers
+2018/10/20 13:13:49 Live: 2; Working: 2; Idle: 0, Jobs in queue: 0; Max: 3
 1 + 2 = 3
-2018/10/13 19:32:05 Live: 2; Working: 0; Idle: 2, Jobs in queue: 0; Min: 1; Max: 3
-2018/10/13 19:32:05 Stopping 1 workers
-2018/10/13 19:32:06 Live: 1; Working: 1; Idle: 0, Jobs in queue: 3; Min: 1; Max: 3
-2018/10/13 19:32:06 Starting 2 workers
-5 + 5 = 10
-2018/10/13 19:32:07 Live: 3; Working: 3; Idle: 0, Jobs in queue: 2; Min: 1; Max: 3
+2 + 9 = 11
+2018/10/20 13:13:50 Live: 2; Working: 0; Idle: 2, Jobs in queue: 0; Max: 3
+2018/10/20 13:13:50 Stopping 2 workers
+2018/10/20 13:13:50 Live: 0; Working: 0; Idle: 0, Jobs in queue: 3; Max: 3
+2018/10/20 13:13:50 Starting 3 workers
+2018/10/20 13:13:51 Live: 3; Working: 3; Idle: 0, Jobs in queue: 2; Max: 3
+8 + 9 = 17
 22 + 1 = 23
-5 + 5 = 10
-2018/10/13 19:32:07 Live: 3; Working: 2; Idle: 1, Jobs in queue: 0; Min: 1; Max: 3
+6 + 7 = 13
+2018/10/20 13:13:52 Live: 3; Working: 2; Idle: 1, Jobs in queue: 0; Max: 3
+2018/10/20 13:13:52 Stopping 1 workers
+1 + 5 = 6
 0 + 4 = 4
-5 + 5 = 10
-2018/10/13 19:32:08 Live: 3; Working: 0; Idle: 3, Jobs in queue: 0; Min: 1; Max: 3
-2018/10/13 19:32:08 Stopping 2 workers
+2018/10/20 13:13:53 Live: 2; Working: 0; Idle: 2, Jobs in queue: 0; Max: 3
+2018/10/20 13:13:53 Stopping 2 workers
+all done
+workers stopped
 ```
-
-
-
-
-## View count [![HitCount](http://hits.dwyl.com/Vizualni/twerk.svg)](http://hits.dwyl.com/Vizualni/twerk)
 
 

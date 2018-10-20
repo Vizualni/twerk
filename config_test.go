@@ -23,40 +23,19 @@ func TestCorrectAndIncorrectConfigs(t *testing.T) {
 func incorrectConfigs() []Config {
 	return []Config{
 		{
-			Max: 0,
-			Min: 0,
-		},
-		{
 			Max: -1,
-			Min: -1,
-		},
-		{
-			Max: -1,
-			Min: 0,
 		},
 		{
 			Max: 0,
-			Min: -1,
 		},
 		{
 			Max: 10,
-			Min: 20,
 		},
 		{
 			Max: 1,
-			Min: -1,
-		},
-		{
-			Max: -1,
-			Min: 1,
-		},
-		{
-			Max: 1,
-			Min: 1,
 		},
 		{
 			Max:          10,
-			Min:          1,
 			Refresh:      time.Nanosecond,
 			UseMyRefresh: false,
 		},
@@ -67,12 +46,10 @@ func correctConfigs() []Config {
 	return []Config{
 		{
 			Max:     2,
-			Min:     1,
 			Refresh: time.Second,
 		},
 		{
 			Max:          2,
-			Min:          1,
 			Refresh:      time.Nanosecond,
 			UseMyRefresh: true,
 		},

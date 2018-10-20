@@ -30,71 +30,75 @@ func TestTHatCorrectNumbersAreReturned(t *testing.T) {
 func getTestData() []configStatusPair {
 	return []configStatusPair{
 		{
-			config:      newConfigMinMax(0, 1),
+			config:      newConfigMax(1),
 			status:      newStatus(1, 0, 0),
 			expectedNum: -1,
 		},
 		{
-			config:      newConfigMinMax(2, 2),
+			config:      newConfigMax(2),
 			status:      newStatus(1, 0, 0),
-			expectedNum: 1,
+			expectedNum: -1,
 		},
 		{
-			config:      newConfigMinMax(2, 6),
+			config:      newConfigMax(6),
 			status:      newStatus(4, 1, 10),
 			expectedNum: 2,
 		},
 		{
-			config:      newConfigMinMax(2, 15),
+			config:      newConfigMax(15),
 			status:      newStatus(2, 1, 10),
 			expectedNum: 8,
 		},
 		{
-			config:      newConfigMinMax(2, 5),
+			config:      newConfigMax(5),
 			status:      newStatus(5, 2, 0),
 			expectedNum: -3,
 		},
 		{
-			config:      newConfigMinMax(2, 10),
+			config:      newConfigMax(10),
 			status:      newStatus(5, 2, 1),
 			expectedNum: -2,
 		},
 		{
-			config:      newConfigMinMax(0, 10),
+			config:      newConfigMax(10),
 			status:      newStatus(1, 0, 0),
 			expectedNum: -1,
 		},
 		{
-			config:      newConfigMinMax(0, 10),
+			config:      newConfigMax(10),
 			status:      newStatus(1, 1, 0),
 			expectedNum: 0,
 		},
 		{
-			config:      newConfigMinMax(5, 10),
+			config:      newConfigMax(10),
 			status:      newStatus(5, 0, 3),
-			expectedNum: 0,
+			expectedNum: -2,
 		},
 		{
-			config:      newConfigMinMax(5, 10),
+			config:      newConfigMax(10),
 			status:      newStatus(5, 0, 5),
 			expectedNum: 0,
 		},
 		{
-			config:      newConfigMinMax(5, 10),
+			config:      newConfigMax(10),
 			status:      newStatus(5, 0, 6),
 			expectedNum: 1,
 		},
 		{
-			config:      newConfigMinMax(5, 10),
+			config:      newConfigMax(10),
 			status:      newStatus(5, 5, 99),
 			expectedNum: 5,
+		},
+		{
+			config:      newConfigMax(3),
+			status:      newStatus(3, 0, 0),
+			expectedNum: -3,
 		},
 	}
 }
 
-func newConfigMinMax(min, max int) Config {
+func newConfigMax(max int) Config {
 	return Config{
-		Min: min,
 		Max: max,
 	}
 }
