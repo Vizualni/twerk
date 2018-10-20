@@ -100,6 +100,7 @@ func (twrkr *twerk) startInBackground() {
 			if twrkr.stop {
 				return
 			}
+			twrkr.printStatus()
 			twrkr.changeCapacity()
 		}
 	}()
@@ -113,8 +114,8 @@ func (twrkr *twerk) printStatus() {
 	inQueue := len(twrkr.jobListener)
 	idle := live - working
 
-	log.Printf("Live: %d; Working: %d; Idle: %d, Jobs in queue: %d; Min: %d; Max: %d",
-		live, working, idle, inQueue, twrkr.config.Min, twrkr.config.Max)
+	log.Printf("Live: %d; Working: %d; Idle: %d, Jobs in queue: %d; Max: %d",
+		live, working, idle, inQueue, twrkr.config.Max)
 }
 
 // This is just a debug line.
@@ -241,7 +242,7 @@ func (twrkr *twerk) Wait() {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		if len(twrkr.jobListener) == 0 && twrkr.liveWorkersNum.Get() == twrkr.config.Min && twrkr.currentlyWorkingNum.Get() == 0 {
+		if len(twrkr.jobListener) == 0 && twrkr.liveWorkersNum.Get() == 0 && twrkr.currentlyWorkingNum.Get() == 0 {
 			return
 		}
 	}
@@ -249,8 +250,8 @@ func (twrkr *twerk) Wait() {
 
 // Stops
 func (twrkr *twerk) Stop() {
-	twrkr.stop = true
 	twrkr.Wait()
+	twrkr.stop = true // this should be included in stop the world
 	twrkr.stopWorkers(twrkr.liveWorkersNum.Get())
 	close(twrkr.jobListener)
 }
@@ -267,7 +268,7 @@ func (twrkr *twerk) changeCapacity() {
 	case addRemove > 0:
 		twrkr.startWorkers(addRemove)
 	case addRemove < 0:
-		twrkr.stopWorkers(addRemove)
+		twrkr.stopWorkers(-addRemove)
 	}
 }
 
