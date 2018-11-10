@@ -251,6 +251,9 @@ func (twrkr *twerk) Wait() {
 // Stops
 func (twrkr *twerk) Stop() {
 	twrkr.Wait()
+	if twrkr.stop {
+		return
+	}
 	twrkr.stop = true // this should be included in stop the world
 	twrkr.stopWorkers(twrkr.liveWorkersNum.Get())
 	close(twrkr.jobListener)
