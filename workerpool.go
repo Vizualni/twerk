@@ -4,11 +4,12 @@ package twerk
 
 import (
 	"fmt"
-	"github.com/vizualni/twerk/callable"
 	"log"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/vizualni/twerk/callable"
 )
 
 // Twerker (or Worker) interface.
@@ -109,6 +110,9 @@ func (twrkr *twerk) startInBackground() {
 // This is just a debug line.
 // This should be opt-in from the config.
 func (twrkr *twerk) printStatus() {
+	if !twrkr.config.Debug {
+		return
+	}
 	live := twrkr.liveWorkersNum.Get()
 	working := twrkr.currentlyWorkingNum.Get()
 	inQueue := len(twrkr.jobListener)
@@ -137,7 +141,9 @@ func (twrkr *twerk) startWorkers(n int) {
 	if n <= 0 {
 		return
 	}
-	log.Printf("Starting %d workers\n", n)
+	if twrkr.config.Debug {
+		log.Printf("Starting %d workers\n", n)
+	}
 	for i := 0; i < n; i++ {
 		twrkr.startWorker()
 	}
@@ -148,7 +154,9 @@ func (twrkr *twerk) stopWorkers(n int) {
 	if n <= 0 {
 		return
 	}
-	log.Printf("Stopping %d workers\n", n)
+	if twrkr.config.Debug {
+		log.Printf("Stopping %d workers\n", n)
+	}
 	for i := 0; i < n; i++ {
 		twrkr.stopWorker()
 	}

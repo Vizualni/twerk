@@ -70,7 +70,7 @@ func (c *Callable) TransformToValues(arguments ...interface{}) ([]reflect.Value,
 
 		// todo ovo jos provjeri
 		if c.argumentTypes[i].Kind() == reflect.Interface {
-			if !argumentValues[i].Type().Implements(c.argumentTypes[i]) {
+			if argumentValues[i].IsValid() && !argumentValues[i].Type().Implements(c.argumentTypes[i]) {
 				return nil, fmt.Errorf("%s argument does not implement %s", argumentValues[i].String(), c.argumentTypes[i].String())
 			}
 			continue

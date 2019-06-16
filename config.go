@@ -16,6 +16,9 @@ type Config struct {
 	Refresh time.Duration
 	// Set it to true only if you want to have really low value for the Refresh interval
 	UseMyRefresh bool
+
+	// If set to true, twerker will periodically print log values
+	Debug bool
 }
 
 // DefaultConfig is configuration that you can use instead of creating your own.
